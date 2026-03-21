@@ -49,11 +49,13 @@ export default function CheckupForm() {
   const [saving, setSaving] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
+  const [settings, setSettings] = useState(null)
 
   useEffect(() => {
     async function load() {
-      const settings = await storage.getSettings()
-      const week = getCurrentWeek(settings.dueDate, new Date(), settings)
+      const s = await storage.getSettings()
+      setSettings(s)
+      const week = getCurrentWeek(s.dueDate, new Date(), s)
       setForm(f => ({ ...f, week }))
 
       if (isEdit) {
@@ -66,6 +68,20 @@ export default function CheckupForm() {
 
   function update(key, value) {
     setForm(f => ({ ...f, [key]: value }))
+  }
+
+  // When user manually changes the date, recalculate pregnancy week
+  // In edit mode, don't auto-change week (record already has its own week)
+  function handleDateChange(dateStr) {
+    if (!dateStr) {
+      update('date', dateStr)
+      return
+    }
+    update('date', dateStr)
+    if (!settings || isEdit) return
+    const selectedDate = parseISO(dateStr)
+    const week = getCurrentWeek(settings.dueDate, selectedDate, settings)
+    setForm(f => ({ ...f, week }))
   }
 
   async function handleImageUpload(e) {
@@ -173,7 +189,7 @@ export default function CheckupForm() {
             <input
               type="date"
               value={form.date}
-              onChange={e => update('date', e.target.value)}
+              onChange={e => handleDateChange(e.target.value)}
               className="input-base"
             />
           </Field>

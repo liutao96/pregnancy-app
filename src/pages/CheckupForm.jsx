@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Camera, X, Sparkles } from 'lucide-react'
+import { Camera, X, Sparkles, Upload, FileText } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import Header from '../components/Header'
 import { storage } from '../utils/storage'
@@ -20,6 +20,17 @@ function fileToBase64(file) {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+function isPdf(file) {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+}
+
+function getFileThumb(file) {
+  if (isPdf(file)) {
+    return null // Show PDF icon instead
+  }
+  return URL.createObjectURL(file)
 }
 
 export default function CheckupForm() {
@@ -62,18 +73,23 @@ export default function CheckupForm() {
     if (!files.length) return
     setImageLoading(true)
     try {
-      const newReports = await Promise.all(files.map(async (file) => ({
-        id: uuidv4(),
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        imageData: await fileToBase64(file),
-        mimeType: file.type,
-        aiAnalysis: null,
-        uploadedAt: new Date().toISOString(),
-      })))
+      const newReports = await Promise.all(files.map(async (file) => {
+        const base64 = await fileToBase64(file)
+        const pdf = isPdf(file)
+        return {
+          id: uuidv4(),
+          name: file.name.replace(/\.[^/.]+$/, ''),
+          imageData: base64,
+          mimeType: pdf ? 'application/pdf' : file.type,
+          isPdf: pdf,
+          aiAnalysis: null,
+          uploadedAt: new Date().toISOString(),
+        }
+      }))
       setForm(f => ({ ...f, reports: [...f.reports, ...newReports] }))
 
-      // Auto-fill from first image (only if form is still empty/default)
-      if (newReports.length > 0 && !isEdit) {
+      // Auto-fill from first file (only if form is still empty/default and first file is image)
+      if (newReports.length > 0 && !isEdit && !newReports[0].isPdf) {
         const firstImage = newReports[0].imageData
         setAutoFilling(true)
         try {
@@ -89,7 +105,6 @@ export default function CheckupForm() {
             }
           }
         } catch (e) {
-          // Silently fail - user can still fill manually
           console.log('Auto-fill failed:', e.message)
         } finally {
           setAutoFilling(false)
@@ -209,18 +224,26 @@ export default function CheckupForm() {
         <div className="bg-white rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="font-semibold text-slate-800">上传报告</p>
-            <p className="text-xs text-slate-400">支持JPG/PNG</p>
+            <p className="text-xs text-slate-400">
+              {form.reports.length > 0 ? `已上传 ${form.reports.length} 个文件` : '支持 JPG/PNG/PDF，可多选'}
+            </p>
           </div>
 
           {form.reports.length > 0 && (
-            <div className="space-y-3 mb-3">
+            <div className="space-y-2 mb-3">
               {form.reports.map(report => (
-                <div key={report.id} className="flex items-center gap-3 bg-rose-50 rounded-xl p-3">
-                  <img
-                    src={`data:${report.mimeType || 'image/jpeg'};base64,${report.imageData}`}
-                    alt={report.name}
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                  />
+                <div key={report.id} className="flex items-center gap-3 bg-rose-50 rounded-xl p-2.5">
+                  {report.isPdf ? (
+                    <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                      <FileText size={20} className="text-red-400" />
+                    </div>
+                  ) : (
+                    <img
+                      src={`data:${report.mimeType || 'image/jpeg'};base64,${report.imageData}`}
+                      alt={report.name}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
                   <input
                     type="text"
                     value={report.name}
@@ -228,9 +251,12 @@ export default function CheckupForm() {
                     className="flex-1 text-sm bg-transparent outline-none text-slate-700 font-medium"
                     placeholder="报告名称"
                   />
+                  <span className="text-xs text-slate-400 bg-white px-2 py-0.5 rounded-full flex-shrink-0">
+                    {report.isPdf ? 'PDF' : '图片'}
+                  </span>
                   <button
                     onClick={() => removeReport(report.id)}
-                    className="p-1 text-slate-400 active:text-rose-500"
+                    className="p-1 text-slate-400 active:text-rose-500 flex-shrink-0"
                   >
                     <X size={16} />
                   </button>
@@ -248,13 +274,13 @@ export default function CheckupForm() {
           )}
 
           <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-4 cursor-pointer active:bg-rose-50 transition-colors ${imageLoading || autoFilling ? 'border-slate-200 text-slate-400' : 'border-rose-200 text-rose-400'}`}>
-            <Camera size={20} />
+            <Upload size={20} />
             <span className="text-sm font-medium">
-              {imageLoading ? '处理中...' : autoFilling ? '识别中...' : '点击上传报告图片'}
+              {imageLoading ? '处理中...' : autoFilling ? '识别中...' : '点击上传报告（可多选）'}
             </span>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,.pdf,application/pdf"
               multiple
               className="hidden"
               onChange={handleImageUpload}

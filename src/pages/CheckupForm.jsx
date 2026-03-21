@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Camera, X } from 'lucide-react'
+import { Camera, X, Sparkles } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import Header from '../components/Header'
 import { storage } from '../utils/storage'
 import { getCurrentWeek } from '../utils/pregnancyCalc'
+import { extractCheckupInfo } from '../utils/ai'
 
 const CHECKUP_TYPES = [
   '常规产检', 'NT检查', '唐氏筛查（早期）', '唐氏筛查（中期）', '无创DNA（NIPT）',
@@ -36,6 +37,7 @@ export default function CheckupForm() {
   })
   const [saving, setSaving] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
+  const [autoFilling, setAutoFilling] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -69,6 +71,30 @@ export default function CheckupForm() {
         uploadedAt: new Date().toISOString(),
       })))
       setForm(f => ({ ...f, reports: [...f.reports, ...newReports] }))
+
+      // Auto-fill from first image (only if form is still empty/default)
+      if (newReports.length > 0 && !isEdit) {
+        const firstImage = newReports[0].imageData
+        setAutoFilling(true)
+        try {
+          const info = await extractCheckupInfo(firstImage)
+          if (info) {
+            const updates = {}
+            if (info.date) updates.date = info.date
+            if (info.week) updates.week = parseInt(info.week) || form.week
+            if (info.hospital) updates.hospital = info.hospital
+            if (info.type) updates.type = info.type
+            if (Object.keys(updates).length > 0) {
+              setForm(f => ({ ...f, ...updates }))
+            }
+          }
+        } catch (e) {
+          // Silently fail - user can still fill manually
+          console.log('Auto-fill failed:', e.message)
+        } finally {
+          setAutoFilling(false)
+        }
+      }
     } finally {
       setImageLoading(false)
     }
@@ -213,10 +239,18 @@ export default function CheckupForm() {
             </div>
           )}
 
-          <label className="flex items-center justify-center gap-2 border-2 border-dashed border-rose-200 rounded-xl py-4 text-rose-400 cursor-pointer active:bg-rose-50">
+          {/* Auto-fill indicator */}
+          {autoFilling && (
+            <div className="flex items-center justify-center gap-2 bg-violet-50 border border-violet-200 rounded-xl py-3 text-violet-600 mb-2">
+              <Sparkles size={16} className="animate-pulse" />
+              <span className="text-sm font-medium">正在识别报告信息...</span>
+            </div>
+          )}
+
+          <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-xl py-4 cursor-pointer active:bg-rose-50 transition-colors ${imageLoading || autoFilling ? 'border-slate-200 text-slate-400' : 'border-rose-200 text-rose-400'}`}>
             <Camera size={20} />
             <span className="text-sm font-medium">
-              {imageLoading ? '处理中...' : '点击上传报告图片'}
+              {imageLoading ? '处理中...' : autoFilling ? '识别中...' : '点击上传报告图片'}
             </span>
             <input
               type="file"
@@ -224,9 +258,12 @@ export default function CheckupForm() {
               multiple
               className="hidden"
               onChange={handleImageUpload}
-              disabled={imageLoading}
+              disabled={imageLoading || autoFilling}
             />
           </label>
+          {!autoFilling && form.reports.length === 0 && (
+            <p className="text-xs text-slate-400 text-center mt-1.5">上传报告图片，自动识别日期、孕周等信息</p>
+          )}
         </div>
 
         {/* Save button */}

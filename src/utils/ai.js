@@ -80,6 +80,42 @@ export async function analyzeReport(imageBase64, week, previousAnalysis = null) 
   return JSON.parse(jsonMatch[0])
 }
 
+// Extract checkup info from report image (auto-fill form)
+export async function extractCheckupInfo(imageBase64) {
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `这是一张产检报告图片，请从图片中识别并提取以下信息：
+
+请按以下JSON格式返回（只返回JSON，不要包含任何其他内容）：
+{
+  "date": "检查日期（YYYY-MM-DD格式，如2026-03-15，如果图片看不清就返回空字符串）",
+  "week": "孕周（数字，如19，如果图片看不清就返回null）",
+  "hospital": "医院/机构名称（如果图片看不清就返回空字符串）",
+  "type": "检查类型（如B超、唐筛、糖耐、血常规等，根据图片内容判断，如果看不清就返回常规产检）",
+  "confidence": "识别置信度（high/medium/low）"
+}`
+        },
+        {
+          type: 'image_url',
+          image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+        }
+      ]
+    }
+  ]
+
+  const responseContent = await chat(messages, { maxTokens: 500 })
+
+  // Extract JSON from response
+  const jsonMatch = responseContent.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('无法从图片中提取信息，请手动填写')
+  return JSON.parse(jsonMatch[0])
+}
+
 // Generate weekly guide content
 export async function generateWeeklyGuide(week, dueDate, settings = {}) {
   const messages = [

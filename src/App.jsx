@@ -15,7 +15,7 @@ import Settings from './pages/Settings'
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/pregnancy-app">
       <div className="relative">
         <Routes>
           <Route path="/" element={<Dashboard />} />

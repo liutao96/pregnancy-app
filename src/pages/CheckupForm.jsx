@@ -51,6 +51,8 @@ export default function CheckupForm() {
   const [imageLoading, setImageLoading] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
   const [settings, setSettings] = useState(null)
+  const [initialized, setInitialized] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -58,6 +60,7 @@ export default function CheckupForm() {
       setSettings(s)
       const week = getCurrentWeek(s.dueDate, new Date(), s)
       setForm(f => ({ ...f, week }))
+      setInitialized(true)
 
       if (isEdit) {
         const checkup = await storage.getCheckupById(id)
@@ -79,10 +82,37 @@ export default function CheckupForm() {
       return
     }
     update('date', dateStr)
-    if (!settings || isEdit) return
-    const selectedDate = parseISO(dateStr)
-    const week = getCurrentWeek(settings.dueDate, selectedDate, settings)
-    setForm(f => ({ ...f, week }))
+    // Only auto-calculate week when form is initialized and not in edit mode
+    if (!initialized || isEdit) return
+    try {
+      const selectedDate = parseISO(dateStr)
+      const week = getCurrentWeek(settings.dueDate, selectedDate, settings)
+      update('week', week)
+    } catch (e) {
+      console.log('Week calculation error:', e)
+    }
+  }
+
+  function openPreview(report) {
+    if (report.isPdf) {
+      const byteCharacters = atob(report.imageData)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'application/pdf' })
+      setPreviewUrl(URL.createObjectURL(blob))
+    } else {
+      setPreviewUrl(`data:${report.mimeType || 'image/jpeg'};base64,${report.imageData}`)
+    }
+  }
+
+  function closePreview() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl)
+      setPreviewUrl(null)
+    }
   }
 
   async function handleImageUpload(e) {
@@ -255,17 +285,22 @@ export default function CheckupForm() {
             <div className="space-y-2 mb-3">
               {form.reports.map(report => (
                 <div key={report.id} className="flex items-center gap-3 bg-rose-50 rounded-xl p-2.5">
-                  {report.isPdf ? (
-                    <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                      <FileText size={20} className="text-red-400" />
-                    </div>
-                  ) : (
-                    <img
-                      src={`data:${report.mimeType || 'image/jpeg'};base64,${report.imageData}`}
-                      alt={report.name}
-                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                    />
-                  )}
+                  <button
+                    onClick={() => openPreview(report)}
+                    className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-rose-300 rounded-lg"
+                  >
+                    {report.isPdf ? (
+                      <div className="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center">
+                        <FileText size={20} className="text-red-400" />
+                      </div>
+                    ) : (
+                      <img
+                        src={`data:${report.mimeType || 'image/jpeg'};base64,${report.imageData}`}
+                        alt={report.name}
+                        className="w-12 h-12 rounded-lg object-cover"
+                      />
+                    )}
+                  </button>
                   <input
                     type="text"
                     value={report.name}
@@ -342,6 +377,37 @@ export default function CheckupForm() {
           appearance: auto;
         }
       `}</style>
+
+      {/* Report preview modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={closePreview}
+        >
+          <div className="relative max-w-full max-h-full">
+            <button
+              onClick={closePreview}
+              className="absolute -top-10 right-0 text-white text-sm font-medium px-3 py-1.5 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+            >
+              关闭
+            </button>
+            {previewUrl.startsWith('data:application/pdf') ? (
+              <iframe
+                src={previewUrl}
+                className="w-[90vw] max-w-xl h-[80vh] rounded-xl border-0"
+                title="PDF预览"
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt="报告预览"
+                className="max-w-[90vw] max-h-[80vh] rounded-xl object-contain"
+                onClick={e => e.stopPropagation()}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

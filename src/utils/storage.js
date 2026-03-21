@@ -59,6 +59,7 @@ export const storage = {
       reportWeekOverrideDate: null,
       babyBorn: false,
       babyBirthDate: null,
+      customCheckupTypes: [],
     }
   },
   async saveSettings(settings) {

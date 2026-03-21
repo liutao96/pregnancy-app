@@ -53,11 +53,15 @@ export default function CheckupForm() {
   const [settings, setSettings] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [customTypes, setCustomTypes] = useState([])
+  const [showNewTypeInput, setShowNewTypeInput] = useState(false)
+  const [newTypeName, setNewTypeName] = useState('')
 
   useEffect(() => {
     async function load() {
       const s = await storage.getSettings()
       setSettings(s)
+      setCustomTypes(s.customCheckupTypes || [])
       const week = getCurrentWeek(s.dueDate, new Date(), s)
       setForm(f => ({ ...f, week }))
       setInitialized(true)
@@ -72,6 +76,22 @@ export default function CheckupForm() {
 
   function update(key, value) {
     setForm(f => ({ ...f, [key]: value }))
+  }
+
+  const allTypes = [...CHECKUP_TYPES, ...customTypes]
+
+  async function addCustomType() {
+    const name = newTypeName.trim()
+    if (!name) return
+    const updated = [...customTypes, name]
+    setCustomTypes(updated)
+    setNewTypeName('')
+    setShowNewTypeInput(false)
+    // Save to settings
+    const s = await storage.getSettings()
+    await storage.saveSettings({ ...s, customCheckupTypes: updated })
+    // Select the new type
+    update('type', name)
   }
 
   // When user manually changes the date, recalculate pregnancy week
@@ -238,15 +258,49 @@ export default function CheckupForm() {
         {/* Type + Hospital */}
         <div className="bg-white rounded-2xl p-4 space-y-4">
           <Field label="检查类型">
-            <select
-              value={form.type}
-              onChange={e => update('type', e.target.value)}
-              className="input-base"
-            >
-              {CHECKUP_TYPES.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={form.type}
+                onChange={e => update('type', e.target.value)}
+                className="input-base flex-1"
+              >
+                {allTypes.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              {showNewTypeInput ? (
+                <div className="flex gap-1 flex-shrink-0">
+                  <input
+                    type="text"
+                    value={newTypeName}
+                    onChange={e => setNewTypeName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCustomType()}
+                    placeholder="输入类型名称"
+                    className="input-base w-28"
+                    autoFocus
+                  />
+                  <button
+                    onClick={addCustomType}
+                    className="px-3 bg-rose-500 text-white rounded-xl text-sm font-medium flex-shrink-0"
+                  >
+                    添加
+                  </button>
+                  <button
+                    onClick={() => { setShowNewTypeInput(false); setNewTypeName('') }}
+                    className="px-2 text-slate-400 text-sm flex-shrink-0"
+                  >
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowNewTypeInput(true)}
+                  className="px-3 border border-rose-200 text-rose-400 rounded-xl text-sm font-medium flex-shrink-0 active:bg-rose-50"
+                >
+                  + 自定义
+                </button>
+              )}
+            </div>
           </Field>
           <Field label="医院/机构">
             <input

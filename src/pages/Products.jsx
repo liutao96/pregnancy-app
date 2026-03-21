@@ -21,7 +21,7 @@ export default function Products() {
   useEffect(() => {
     async function load() {
       const s = await storage.getSettings()
-      const w = getCurrentWeek(s.dueDate)
+      const w = getCurrentWeek(s.dueDate, new Date(), s)
       setCurrentWeek(w)
       await loadProducts(w)
     }

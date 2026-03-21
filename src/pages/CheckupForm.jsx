@@ -53,7 +53,7 @@ export default function CheckupForm() {
   useEffect(() => {
     async function load() {
       const settings = await storage.getSettings()
-      const week = getCurrentWeek(settings.dueDate)
+      const week = getCurrentWeek(settings.dueDate, new Date(), settings)
       setForm(f => ({ ...f, week }))
 
       if (isEdit) {
@@ -97,7 +97,12 @@ export default function CheckupForm() {
           if (info) {
             const updates = {}
             if (info.date) updates.date = info.date
-            if (info.week) updates.week = parseInt(info.week) || form.week
+            // B超报告的测量孕周优先于LMP计算孕周
+            if (info.bUltrasoundWeek != null) {
+              updates.week = parseInt(info.bUltrasoundWeek)
+            } else if (info.week) {
+              updates.week = parseInt(info.week)
+            }
             if (info.hospital) updates.hospital = info.hospital
             if (info.type) updates.type = info.type
             if (Object.keys(updates).length > 0) {
@@ -140,9 +145,9 @@ export default function CheckupForm() {
       }
       await storage.saveCheckup(checkup)
 
-      // If week differs from calculated, offer to update settings
+      // If week differs from calculated, save override (B超 week takes priority)
       const settings = await storage.getSettings()
-      const calcWeek = getCurrentWeek(settings.dueDate)
+      const calcWeek = getCurrentWeek(settings.dueDate, new Date(), settings)
       if (Math.abs(checkup.week - calcWeek) >= 1) {
         await storage.saveSettings({
           ...settings,
@@ -172,7 +177,7 @@ export default function CheckupForm() {
               className="input-base"
             />
           </Field>
-          <Field label="孕周（周）" hint="报告上显示的孕周，可覆盖计算值">
+          <Field label="孕周（周）" hint="B超报告孕周 > 末次月经计算">
             <input
               type="number"
               min="4" max="42"

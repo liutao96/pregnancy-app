@@ -9,7 +9,19 @@ export function getLMP(dueDate) {
   return addDays(due, -280)
 }
 
-export function getCurrentWeek(dueDate, today = new Date()) {
+export function getCurrentWeek(dueDate, today = new Date(), settings = {}) {
+  // If there's a B超 report override (reportWeekOverride), use it
+  // B超 measurement is more accurate than LMP calculation
+  if (settings?.reportWeekOverride && settings?.reportWeekOverrideDate) {
+    const overrideDate = typeof settings.reportWeekOverrideDate === 'string'
+      ? parseISO(settings.reportWeekOverrideDate)
+      : settings.reportWeekOverrideDate
+    const daysDiff = differenceInDays(today, overrideDate)
+    // Each 7 days = 1 week from the override week
+    const weekOffset = Math.floor(daysDiff / 7)
+    return settings.reportWeekOverride + weekOffset
+  }
+
   const due = typeof dueDate === 'string' ? parseISO(dueDate) : dueDate
   const lmp = getLMP(due)
   const daysPregnant = differenceInDays(today, lmp)

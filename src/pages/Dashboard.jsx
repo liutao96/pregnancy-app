@@ -32,17 +32,8 @@ export default function Dashboard() {
       setSettings(s)
       setCheckups(c)
 
-      // Calculate current week
-      let week = getCurrentWeek(s.dueDate)
-      if (s.reportWeekOverride && s.reportWeekOverrideDate) {
-        // Use report override if it was set within last 7 days
-        const overrideDate = new Date(s.reportWeekOverrideDate)
-        const daysSince = Math.floor((new Date() - overrideDate) / (1000 * 60 * 60 * 24))
-        if (daysSince <= 7) {
-          const weeksDiff = Math.floor(daysSince / 7)
-          week = s.reportWeekOverride + weeksDiff
-        }
-      }
+      // Calculate current week (B超 override takes priority over LMP calculation)
+      const week = getCurrentWeek(s.dueDate, new Date(), s)
       setCurrentWeek(week)
       setDaysLeft(getDaysUntilDue(s.dueDate))
     }

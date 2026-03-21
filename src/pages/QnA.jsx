@@ -32,7 +32,7 @@ export default function QnA() {
         storage.getQAHistory()
       ])
       setSettings(s)
-      setCurrentWeek(getCurrentWeek(s.dueDate))
+      setCurrentWeek(getCurrentWeek(s.dueDate, new Date(), s))
       setMessages(history)
     }
     load()

@@ -94,10 +94,11 @@ export async function extractCheckupInfo(imageBase64) {
 请按以下JSON格式返回（只返回JSON，不要包含任何其他内容）：
 {
   "date": "检查日期（YYYY-MM-DD格式，如2026-03-15，如果图片看不清就返回空字符串）",
-  "week": "孕周（数字，如19，如果图片看不清就返回null）",
+  "week": "孕周（数字，如19，如果图片看不清就返回null）。注意：如果这是B超报告，应该使用报告上标注的B超测量孕周（如根据CRL头臀长或BPD双顶径计算的孕周），而不是末次月经计算的孕周。",
   "hospital": "医院/机构名称（如果图片看不清就返回空字符串）",
   "type": "检查类型（如B超、唐筛、糖耐、血常规等，根据图片内容判断，如果看不清就返回常规产检）",
-  "confidence": "识别置信度（high/medium/low）"
+  "confidence": "识别置信度（high/medium/low）",
+  "bUltrasoundWeek": "如果是B超报告，报告上直接标注的孕周（如B超单上写的'孕19+3周'中的19）。如果报告上没有明确写明孕周数字或不是B超报告，返回null"
 }`
         },
         {

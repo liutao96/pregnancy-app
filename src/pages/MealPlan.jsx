@@ -52,7 +52,7 @@ export default function MealPlan() {
       setSettings(s)
       setHistory(h)
       setExclusions(ex)
-      const w = getCurrentWeek(s.dueDate)
+      const w = getCurrentWeek(s.dueDate, new Date(), s)
       setCurrentWeek(w)
 
       // Find existing confirmed plan for tomorrow

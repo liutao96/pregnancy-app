@@ -17,7 +17,7 @@ export default function WeeklyGuide() {
   useEffect(() => {
     storage.getSettings().then(s => {
       setSettings(s)
-      const w = getCurrentWeek(s.dueDate)
+      const w = getCurrentWeek(s.dueDate, new Date(), s)
       setCurrentWeek(w)
       setSelectedWeek(w)
     })

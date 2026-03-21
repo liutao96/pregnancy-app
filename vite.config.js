@@ -3,12 +3,9 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/pregnancy-app/',
   server: {
     port: 5173,
-    allowedHosts: ['.fly.capy.computer', '.preview.happycapy.ai', 'capy-1773450134545.fly.capy.computer'],
-  },
-  preview: {
-    allowedHosts: ['.fly.capy.computer', '.preview.happycapy.ai'],
   },
   plugins: [
     react(),

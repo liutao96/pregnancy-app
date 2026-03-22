@@ -33,6 +33,8 @@ jobs:
       - name: Build
         env:
           VITE_AI_GATEWAY_API_KEY: ${{ secrets.VITE_AI_GATEWAY_API_KEY }}
+          VITE_OSS_ACCESS_KEY_ID: ${{ secrets.VITE_OSS_ACCESS_KEY_ID }}
+          VITE_OSS_ACCESS_KEY_SECRET: ${{ secrets.VITE_OSS_ACCESS_KEY_SECRET }}
         run: npm run build
 
       - name: Upload artifact

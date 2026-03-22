@@ -46,7 +46,98 @@ const DEFAULT_PREPARATION = [
   { id: '25', category: '入院必备', text: '提前了解入院路线和流程', checked: false },
 ]
 
+// OSS sync helpers (lazy import to avoid circular deps)
+let ossModule = null
+async function getOSS() {
+  if (!ossModule) {
+    ossModule = await import('./oss')
+  }
+  return ossModule
+}
+
+// Sync all local data to OSS (fire and forget)
+async function syncAllToOSS() {
+  try {
+    const oss = await getOSS()
+    const data = {
+      settings: await localforage.getItem(KEYS.SETTINGS),
+      checkups: await localforage.getItem(KEYS.CHECKUPS) || [],
+      qaHistory: await localforage.getItem(KEYS.QA_HISTORY) || [],
+      preparation: await localforage.getItem(KEYS.PREPARATION),
+      postpartum: await localforage.getItem(KEYS.POSTPARTUM),
+      mealHistory: await localforage.getItem(KEYS.MEAL_HISTORY) || [],
+      foodExclusions: await localforage.getItem(KEYS.FOOD_EXCLUSIONS),
+      syncedAt: Date.now(),
+    }
+    await oss.saveDataToOSS(data)
+  } catch (e) {
+    console.log('OSS sync error:', e.message)
+  }
+}
+
 export const storage = {
+  // Initialize: sync from OSS and merge with local data
+  // Call this once on app startup
+  async init() {
+    try {
+      const oss = await getOSS()
+      const remoteData = await oss.loadDataFromOSS()
+      if (!remoteData) return // First time, no remote data
+
+      // Load all local data
+      const localData = {
+        settings: await localforage.getItem(KEYS.SETTINGS),
+        checkups: await localforage.getItem(KEYS.CHECKUPS) || [],
+        qaHistory: await localforage.getItem(KEYS.QA_HISTORY) || [],
+        preparation: await localforage.getItem(KEYS.PREPARATION),
+        postpartum: await localforage.getItem(KEYS.POSTPARTUM),
+        mealHistory: await localforage.getItem(KEYS.MEAL_HISTORY) || [],
+        foodExclusions: await localforage.getItem(KEYS.FOOD_EXCLUSIONS),
+      }
+
+      // Merge: for each field, use the one with most recent data
+      const merged = { ...remoteData }
+
+      // Checkups: merge by id, newer date wins
+      if (localData.checkups.length > 0 || remoteData.checkups?.length > 0) {
+        const checkupMap = new Map()
+        for (const c of (remoteData.checkups || [])) {
+          checkupMap.set(c.id, c)
+        }
+        for (const c of localData.checkups) {
+          const existing = checkupMap.get(c.id)
+          if (!existing || new Date(c.date) >= new Date(existing.date)) {
+            checkupMap.set(c.id, c)
+          }
+        }
+        merged.checkups = Array.from(checkupMap.values()).sort(
+          (a, b) => new Date(b.date) - new Date(a.date)
+        )
+      }
+
+      // Settings: merge object keys, prefer local (user's device data)
+      if (localData.settings) {
+        merged.settings = { ...remoteData.settings, ...localData.settings }
+      }
+
+      // Save merged data back to local
+      if (merged.settings) await localforage.setItem(KEYS.SETTINGS, merged.settings)
+      if (merged.checkups) await localforage.setItem(KEYS.CHECKUPS, merged.checkups)
+      if (merged.qaHistory) await localforage.setItem(KEYS.QA_HISTORY, merged.qaHistory)
+      if (merged.preparation) await localforage.setItem(KEYS.PREPARATION, merged.preparation)
+      if (merged.postpartum) await localforage.setItem(KEYS.POSTPARTUM, merged.postpartum)
+      if (merged.mealHistory) await localforage.setItem(KEYS.MEAL_HISTORY, merged.mealHistory)
+      if (merged.foodExclusions) await localforage.setItem(KEYS.FOOD_EXCLUSIONS, merged.foodExclusions)
+
+      // Sync merged data back to OSS
+      await syncAllToOSS()
+
+      console.log('OSS sync complete')
+    } catch (e) {
+      console.log('Init sync error:', e.message)
+    }
+  },
+
   // Settings
   async getSettings() {
     const s = await localforage.getItem(KEYS.SETTINGS)
@@ -64,7 +155,9 @@ export const storage = {
     }
   },
   async saveSettings(settings) {
-    return localforage.setItem(KEYS.SETTINGS, settings)
+    const result = await localforage.setItem(KEYS.SETTINGS, settings)
+    syncAllToOSS() // fire and forget
+    return result
   },
 
   // Checkups
@@ -81,11 +174,13 @@ export const storage = {
     }
     checkups.sort((a, b) => new Date(b.date) - new Date(a.date))
     await localforage.setItem(KEYS.CHECKUPS, checkups)
+    syncAllToOSS() // fire and forget
     return checkup
   },
   async deleteCheckup(id) {
     const checkups = await this.getCheckups()
     await localforage.setItem(KEYS.CHECKUPS, checkups.filter(c => c.id !== id))
+    syncAllToOSS()
   },
   async getCheckupById(id) {
     const checkups = await this.getCheckups()
@@ -97,10 +192,14 @@ export const storage = {
     return (await localforage.getItem(KEYS.QA_HISTORY)) || []
   },
   async saveQAHistory(messages) {
-    return localforage.setItem(KEYS.QA_HISTORY, messages)
+    const result = await localforage.setItem(KEYS.QA_HISTORY, messages)
+    syncAllToOSS()
+    return result
   },
   async clearQAHistory() {
-    return localforage.setItem(KEYS.QA_HISTORY, [])
+    const result = await localforage.setItem(KEYS.QA_HISTORY, [])
+    syncAllToOSS()
+    return result
   },
 
   // Preparation checklist
@@ -109,22 +208,23 @@ export const storage = {
     return items || DEFAULT_PREPARATION
   },
   async savePreparation(items) {
-    return localforage.setItem(KEYS.PREPARATION, items)
+    const result = await localforage.setItem(KEYS.PREPARATION, items)
+    syncAllToOSS()
+    return result
   },
 
   // Postpartum
   async getPostpartum() {
-    return (await localforage.getItem(KEYS.POSTPARTUM)) || {
-      feedingLogs: [],
-      diaperLogs: [],
-      sleepLogs: [],
-    }
+    const data = await localforage.getItem(KEYS.POSTPARTUM)
+    return data || { feedingLogs: [], diaperLogs: [], sleepLogs: [] }
   },
   async savePostpartum(data) {
-    return localforage.setItem(KEYS.POSTPARTUM, data)
+    const result = await localforage.setItem(KEYS.POSTPARTUM, data)
+    syncAllToOSS()
+    return result
   },
 
-  // Week content cache (keyed by week number)
+  // Week content cache (not synced to OSS)
   async getWeekCache(week) {
     const cache = await localforage.getItem(KEYS.WEEK_CACHE) || {}
     return cache[week] || null
@@ -135,7 +235,7 @@ export const storage = {
     return localforage.setItem(KEYS.WEEK_CACHE, cache)
   },
 
-  // Products cache
+  // Products cache (not synced to OSS)
   async getProductsCache(week) {
     const cache = await localforage.getItem(KEYS.PRODUCTS_CACHE) || {}
     return cache[week] || null
@@ -146,32 +246,35 @@ export const storage = {
     return localforage.setItem(KEYS.PRODUCTS_CACHE, cache)
   },
 
-  // Meal history (confirmed weekly menus)
+  // Meal history
   async getMealHistory() {
     return (await localforage.getItem(KEYS.MEAL_HISTORY)) || []
   },
   async saveMealHistory(history) {
-    return localforage.setItem(KEYS.MEAL_HISTORY, history)
+    const result = await localforage.setItem(KEYS.MEAL_HISTORY, history)
+    syncAllToOSS()
+    return result
   },
   async addMealWeek(weekData) {
     const history = await this.getMealHistory()
-    // Remove if already exists (for regeneration)
     const filtered = history.filter(h => h.weekKey !== weekData.weekKey)
     filtered.unshift(weekData)
-    // Keep last 12 weeks
     const trimmed = filtered.slice(0, 12)
     await localforage.setItem(KEYS.MEAL_HISTORY, trimmed)
+    syncAllToOSS()
     return trimmed
   },
 
-  // Food exclusions (dislikes + taboo)
+  // Food exclusions
   async getFoodExclusions() {
     return (await localforage.getItem(KEYS.FOOD_EXCLUSIONS)) || {
-      dislikes: [],   // 不想吃的
-      taboo: [],      // 忌口（孕期禁忌）
+      dislikes: [],
+      taboo: [],
     }
   },
   async saveFoodExclusions(data) {
-    return localforage.setItem(KEYS.FOOD_EXCLUSIONS, data)
+    const result = await localforage.setItem(KEYS.FOOD_EXCLUSIONS, data)
+    syncAllToOSS()
+    return result
   },
 }

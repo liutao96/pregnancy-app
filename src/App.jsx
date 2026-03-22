@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import BottomNav from './components/BottomNav'
 import Dashboard from './pages/Dashboard'
@@ -12,8 +13,26 @@ import More from './pages/More'
 import Preparation from './pages/Preparation'
 import Postpartum from './pages/Postpartum'
 import Settings from './pages/Settings'
+import { storage } from './utils/storage'
 
 export default function App() {
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    storage.init().finally(() => setReady(true))
+  }, [])
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-rose-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-slate-500">正在同步数据...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <BrowserRouter basename="/pregnancy-app">
       <div className="relative">

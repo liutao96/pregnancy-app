@@ -103,6 +103,54 @@ export default function CheckupDetail() {
           )}
         </div>
 
+        {/* AI Summary */}
+        {checkup.aiSummary && (
+          <div className="bg-white rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={16} className="text-violet-500" />
+              <h3 className="font-semibold text-slate-800">报告总结</h3>
+            </div>
+            <div className="space-y-3">
+              {checkup.aiSummary.indicators?.length > 0 && (
+                <div className="space-y-2">
+                  {checkup.aiSummary.indicators.map((ind, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      {ind.status === 'normal' && <CheckCircle size={14} className="text-green-500 mt-0.5 flex-shrink-0" />}
+                      {ind.status === 'warning' && <AlertTriangle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />}
+                      {ind.status === 'abnormal' && <AlertCircle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-slate-700">{ind.name}</span>
+                          <span className="text-xs text-slate-400">{ind.value}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">{ind.explanation}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {checkup.aiSummary.summary && (
+                <div className="p-3 bg-violet-50 rounded-xl">
+                  <p className="text-sm text-violet-700">{checkup.aiSummary.summary}</p>
+                </div>
+              )}
+              {checkup.aiSummary.recommendations?.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500 mb-1">建议</p>
+                  <ul className="space-y-1">
+                    {checkup.aiSummary.recommendations.map((r, i) => (
+                      <li key={i} className="text-xs text-slate-600 flex items-start gap-1">
+                        <span className="text-rose-400">•</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Reports */}
         {checkup.reports?.length > 0 ? (
           <div className="space-y-4">

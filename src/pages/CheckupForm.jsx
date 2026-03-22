@@ -6,7 +6,7 @@ import { parseISO } from 'date-fns'
 import Header from '../components/Header'
 import { storage } from '../utils/storage'
 import { getCurrentWeek } from '../utils/pregnancyCalc'
-import { extractCheckupInfo } from '../utils/ai'
+import { extractCheckupInfo, analyzeReport } from '../utils/ai'
 
 const CHECKUP_TYPES = [
   '常规产检', 'NT检查', '唐氏筛查（早期）', '唐氏筛查（中期）', '无创DNA（NIPT）',
@@ -50,6 +50,7 @@ export default function CheckupForm() {
   const [saving, setSaving] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
+  const [summarizing, setSummarizing] = useState(false)
   const [settings, setSettings] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -215,9 +216,10 @@ export default function CheckupForm() {
     if (!form.date || !form.week) return
     setSaving(true)
     try {
+      const checkupId = isEdit ? id : uuidv4()
       const checkup = {
         ...form,
-        id: isEdit ? id : uuidv4(),
+        id: checkupId,
         week: parseInt(form.week),
         createdAt: isEdit ? form.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -235,7 +237,26 @@ export default function CheckupForm() {
         })
       }
 
-      navigate(`/checkups/${checkup.id}`, { replace: true })
+      // Generate AI summary for new records with image reports (not PDFs)
+      if (!isEdit && form.reports.length > 0) {
+        const imageReports = form.reports.filter(r => !r.isPdf)
+        if (imageReports.length > 0) {
+          setSummarizing(true)
+          try {
+            // Analyze first image report
+            const summary = await analyzeReport(imageReports[0].imageData, checkup.week)
+            // Save checkup with AI summary
+            const updatedCheckup = { ...checkup, aiSummary: summary }
+            await storage.saveCheckup(updatedCheckup)
+          } catch (e) {
+            console.log('Summary generation failed:', e.message)
+          } finally {
+            setSummarizing(false)
+          }
+        }
+      }
+
+      navigate(`/checkups/${checkupId}`, { replace: true })
     } finally {
       setSaving(false)
     }
@@ -436,13 +457,21 @@ export default function CheckupForm() {
           )}
         </div>
 
+        {/* Summarizing indicator */}
+        {summarizing && (
+          <div className="flex items-center justify-center gap-2 bg-violet-50 border border-violet-200 rounded-xl py-3 text-violet-600">
+            <Sparkles size={16} className="animate-pulse" />
+            <span className="text-sm font-medium">正在分析报告，生成总结...</span>
+          </div>
+        )}
+
         {/* Save button */}
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || summarizing}
           className="w-full bg-rose-500 text-white py-4 rounded-2xl font-semibold text-base active:bg-rose-600 disabled:opacity-60"
         >
-          {saving ? '保存中...' : '保存记录'}
+          {saving ? (summarizing ? '正在生成报告总结...' : '保存中...') : '保存记录'}
         </button>
       </div>
 

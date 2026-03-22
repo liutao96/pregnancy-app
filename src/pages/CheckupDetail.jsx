@@ -122,6 +122,9 @@ export default function CheckupDetail() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-slate-700">{ind.name}</span>
                           <span className="text-xs text-slate-400">{ind.value}</span>
+                          {ind.source && checkup.aiSummary.reportAnalyses?.length > 1 && (
+                            <span className="text-xs text-violet-400 bg-violet-50 px-1.5 py-0.5 rounded">{ind.source}</span>
+                          )}
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{ind.explanation}</p>
                       </div>

@@ -239,17 +239,52 @@ export default function CheckupForm() {
       }
 
       // Generate AI summary for new records with image reports (not PDFs)
-      // Only generate if no summary exists and hasn't been attempted this session
+      // Analyze ALL image reports and combine results into one summary
       if (!isEdit && form.reports.length > 0 && !checkup.aiSummary && !summaryAttempted) {
         const imageReports = form.reports.filter(r => !r.isPdf)
         if (imageReports.length > 0) {
           setSummarizing(true)
           setSummaryAttempted(true)
           try {
-            // Analyze first image report
-            const summary = await analyzeReport(imageReports[0].imageData, checkup.week)
-            // Save checkup with AI summary
-            const updatedCheckup = { ...checkup, aiSummary: summary }
+            // Analyze each image report sequentially
+            const allAnalyses = []
+            for (const report of imageReports) {
+              const analysis = await analyzeReport(report.imageData, checkup.week)
+              allAnalyses.push({ ...analysis, reportId: report.id })
+            }
+
+            // Combine all analyses into one comprehensive summary
+            const combinedIndicators = []
+            const combinedRecommendations = []
+            const summaries = []
+
+            for (const a of allAnalyses) {
+              if (a.examName) summaries.push(`【${a.examName}】`)
+              if (a.summary) summaries.push(a.summary)
+              if (a.indicators?.length > 0) {
+                for (const ind of a.indicators) {
+                  combinedIndicators.push({ ...ind, source: a.examName || '检查报告' })
+                }
+              }
+              if (a.recommendations?.length > 0) {
+                for (const rec of a.recommendations) {
+                  combinedRecommendations.push(rec)
+                }
+              }
+            }
+
+            const combinedSummary = {
+              examName: allAnalyses.length > 1
+                ? `综合分析（${allAnalyses.length}份报告）`
+                : allAnalyses[0]?.examName || '产检报告',
+              summary: summaries.filter(s => s).join('\n'),
+              indicators: combinedIndicators,
+              recommendations: combinedRecommendations,
+              reportAnalyses: allAnalyses, // Preserve per-report analyses
+            }
+
+            // Save checkup with combined AI summary
+            const updatedCheckup = { ...checkup, aiSummary: combinedSummary }
             await storage.saveCheckup(updatedCheckup)
           } catch (e) {
             console.log('Summary generation failed:', e.message)

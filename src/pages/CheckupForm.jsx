@@ -500,6 +500,11 @@ export default function CheckupForm() {
           {!autoFilling && form.reports.length === 0 && (
             <p className="text-xs text-slate-400 text-center mt-1.5">上传报告图片，自动识别日期、孕周等信息</p>
           )}
+          {/MicroMessenger|WeChat/i.test(navigator.userAgent) && (
+            <p className="text-xs text-amber-500 text-center mt-1.5">
+              提示：微信内置浏览器上传可能受限，建议用 Safari 或 Chrome 打开
+            </p>
+          )}
         </div>
 
         {/* Summarizing indicator */}

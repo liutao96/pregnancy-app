@@ -51,6 +51,7 @@ export default function CheckupForm() {
   const [imageLoading, setImageLoading] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
   const [summarizing, setSummarizing] = useState(false)
+  const [summaryAttempted, setSummaryAttempted] = useState(false)
   const [settings, setSettings] = useState(null)
   const [initialized, setInitialized] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -238,10 +239,12 @@ export default function CheckupForm() {
       }
 
       // Generate AI summary for new records with image reports (not PDFs)
-      if (!isEdit && form.reports.length > 0) {
+      // Only generate if no summary exists and hasn't been attempted this session
+      if (!isEdit && form.reports.length > 0 && !checkup.aiSummary && !summaryAttempted) {
         const imageReports = form.reports.filter(r => !r.isPdf)
         if (imageReports.length > 0) {
           setSummarizing(true)
+          setSummaryAttempted(true)
           try {
             // Analyze first image report
             const summary = await analyzeReport(imageReports[0].imageData, checkup.week)

@@ -13,6 +13,7 @@ import More from './pages/More'
 import Preparation from './pages/Preparation'
 import Postpartum from './pages/Postpartum'
 import Settings from './pages/Settings'
+import BatchUpload from './pages/BatchUpload'
 import { storage } from './utils/storage'
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/preparation" element={<Preparation />} />
           <Route path="/postpartum" element={<Postpartum />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/checkups/batch" element={<BatchUpload />} />
         </Routes>
         <BottomNav />
       </div>

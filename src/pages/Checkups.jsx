@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ChevronRight, FileText, Image } from 'lucide-react'
+import { Plus, ChevronRight, FileText, Image, Upload } from 'lucide-react'
 import Header from '../components/Header'
 import { storage } from '../utils/storage'
 import { getTrimesterLabel } from '../utils/pregnancyCalc'
@@ -33,13 +33,22 @@ export default function Checkups() {
       <Header
         title="孕检档案"
         right={
-          <button
-            onClick={() => navigate('/checkups/new')}
-            className="flex items-center gap-1 bg-rose-500 text-white px-3 py-1.5 rounded-full text-sm font-medium active:bg-rose-600"
-          >
-            <Plus size={14} />
-            <span>新增</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/checkups/batch')}
+              className="flex items-center gap-1 bg-violet-500 text-white px-3 py-1.5 rounded-full text-sm font-medium active:bg-violet-600"
+            >
+              <Upload size={14} />
+              <span>批量</span>
+            </button>
+            <button
+              onClick={() => navigate('/checkups/new')}
+              className="flex items-center gap-1 bg-rose-500 text-white px-3 py-1.5 rounded-full text-sm font-medium active:bg-rose-600"
+            >
+              <Plus size={14} />
+              <span>新增</span>
+            </button>
+          </div>
         }
       />
 

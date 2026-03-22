@@ -103,7 +103,7 @@ function CheckupCard({ checkup, onClick }) {
               </span>
             )}
           </div>
-          <p className="font-semibold text-slate-800">{checkup.type || '常规产检'}</p>
+          <p className="font-semibold text-slate-800">{(checkup.types || checkup.type ? [checkup.type] : ['常规产检']).join('、')}</p>
           <p className="text-xs text-slate-500 mt-0.5">
             {checkup.date} · {checkup.hospital || '未填写医院'}
           </p>

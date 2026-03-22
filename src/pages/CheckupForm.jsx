@@ -42,8 +42,8 @@ export default function CheckupForm() {
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     week: 19,
-    hospital: '',
-    type: '常规产检',
+    hospital: '霍山县医院',
+    types: ['常规产检'],
     notes: '',
     reports: [],
   })
@@ -68,7 +68,7 @@ export default function CheckupForm() {
 
       if (isEdit) {
         const checkup = await storage.getCheckupById(id)
-        if (checkup) setForm(checkup)
+        if (checkup) setForm({ ...checkup, types: checkup.types || checkup.type ? [checkup.type] : ['常规产检'] })
       }
     }
     load()
@@ -90,8 +90,20 @@ export default function CheckupForm() {
     // Save to settings
     const s = await storage.getSettings()
     await storage.saveSettings({ ...s, customCheckupTypes: updated })
-    // Select the new type
-    update('type', name)
+    // Add to selected types
+    if (!form.types.includes(name)) {
+      update('types', [...form.types, name])
+    }
+  }
+
+  function addType(type) {
+    if (!form.types.includes(type)) {
+      update('types', [...form.types, type])
+    }
+  }
+
+  function removeType(type) {
+    update('types', form.types.filter(t => t !== type))
   }
 
   // When user manually changes the date, recalculate pregnancy week
@@ -171,7 +183,7 @@ export default function CheckupForm() {
               updates.week = parseInt(info.week)
             }
             if (info.hospital) updates.hospital = info.hospital
-            if (info.type) updates.type = info.type
+            if (info.type) updates.types = [info.type]
             if (Object.keys(updates).length > 0) {
               setForm(f => ({ ...f, ...updates }))
             }
@@ -257,14 +269,35 @@ export default function CheckupForm() {
 
         {/* Type + Hospital */}
         <div className="bg-white rounded-2xl p-4 space-y-4">
-          <Field label="检查类型">
+          <Field label="检查类型（可多选）">
+            {/* Selected type tags */}
+            {form.types.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {form.types.map(t => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 bg-rose-100 text-rose-600 px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    {t}
+                    <button
+                      onClick={() => removeType(t)}
+                      className="ml-1 hover:text-rose-800"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Add type dropdown + custom */}
             <div className="flex gap-2">
               <select
-                value={form.type}
-                onChange={e => update('type', e.target.value)}
+                value=""
+                onChange={e => { if (e.target.value) addType(e.target.value); e.target.value = '' }}
                 className="input-base flex-1"
               >
-                {allTypes.map(t => (
+                <option value="">+ 添加检查类型</option>
+                {allTypes.filter(t => !form.types.includes(t)).map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>

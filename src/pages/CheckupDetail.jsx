@@ -92,7 +92,7 @@ export default function CheckupDetail() {
             </span>
             <span className="text-sm text-slate-500">{checkup.date}</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-800">{checkup.type || '常规产检'}</h2>
+          <h2 className="text-lg font-bold text-slate-800">{(checkup.types || checkup.type ? [checkup.type] : ['常规产检']).join('、')}</h2>
           {checkup.hospital && (
             <p className="text-sm text-slate-500 mt-1">{checkup.hospital}</p>
           )}

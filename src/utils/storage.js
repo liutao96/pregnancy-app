@@ -60,6 +60,7 @@ export const storage = {
       babyBorn: false,
       babyBirthDate: null,
       customCheckupTypes: [],
+      weeklyCheckupReminder: true,
     }
   },
   async saveSettings(settings) {

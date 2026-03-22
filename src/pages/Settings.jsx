@@ -90,6 +90,19 @@ export default function Settings() {
               className="input-field"
             />
           </Field>
+
+          <div className="flex items-center justify-between pt-2">
+            <div>
+              <p className="text-sm text-slate-600">周一产检提醒</p>
+              <p className="text-xs text-slate-400">每周一显示产检提醒横幅</p>
+            </div>
+            <button
+              onClick={() => updateSetting('weeklyCheckupReminder', !settings.weeklyCheckupReminder)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${settings.weeklyCheckupReminder ? 'bg-rose-500' : 'bg-slate-200'}`}
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${settings.weeklyCheckupReminder ? 'left-7' : 'left-1'}`} />
+            </button>
+          </div>
         </div>
 
         {/* Family info */}

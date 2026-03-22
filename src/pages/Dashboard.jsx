@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { format } from 'date-fns'
+import { format, isMonday } from 'date-fns'
 import { ClipboardList, BookOpen, MessageCircle, ShoppingBag, Heart, ChevronRight, Bell, Utensils } from 'lucide-react'
 import { storage } from '../utils/storage'
 import {
@@ -109,6 +109,27 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Monday checkup reminder */}
+      {settings.weeklyCheckupReminder && isMonday(new Date()) && (
+        <div className="mx-4 -mt-4">
+          <div
+            className="bg-gradient-to-r from-amber-400 to-orange-400 rounded-2xl p-4 text-white cursor-pointer active:opacity-90"
+            onClick={() => navigate('/checkups/new')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Bell size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">今天是周一 · 产检日</p>
+                <p className="text-xs opacity-80 mt-0.5">别忘了记录本周产检情况</p>
+              </div>
+              <ChevronRight size={20} className="opacity-70" />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-4 mt-4 space-y-4">
         {/* Quick actions */}

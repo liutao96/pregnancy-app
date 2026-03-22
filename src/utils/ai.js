@@ -33,7 +33,22 @@ const SYSTEM_PROMPT = `你是一位专业的孕期健康顾问和陪伴助手，
 - 回答要实用具体，避免泛泛而谈`
 
 // Analyze a checkup report image
-export async function analyzeReport(imageBase64, week, previousAnalysis = null) {
+// historicalCheckups: array of { date, week, aiSummary } from previous checkup records
+export async function analyzeReport(imageBase64, week, historicalCheckups = []) {
+  // Build historical context string for comparison
+  let historicalContext = ''
+  if (historicalCheckups && historicalCheckups.length > 0) {
+    historicalContext = '\n\n【历史产检记录摘要】（请与当前报告进行对比分析）：\n'
+    for (const hc of historicalCheckups) {
+      const examInfo = hc.aiSummary?.examName ? `（${hc.aiSummary.examName}）` : ''
+      historicalContext += `- 孕${hc.week}周${hc.date}${examInfo}：${hc.aiSummary?.summary || '无文字总结'}\n`
+      if (hc.aiSummary?.indicators?.length > 0) {
+        historicalContext += `  关键指标：${hc.aiSummary.indicators.map(i => `${i.name}=${i.value}`).join('，')}\n`
+      }
+    }
+    historicalContext += '\n请重点关注与历史数据的对比变化。'
+  }
+
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
     {
@@ -41,7 +56,7 @@ export async function analyzeReport(imageBase64, week, previousAnalysis = null) 
       content: [
         {
           type: 'text',
-          text: `这是孕${week}周的产检报告图片，请帮我详细分析。${previousAnalysis ? '上次报告摘要：' + previousAnalysis : ''}
+          text: `这是孕${week}周的产检报告图片，请帮我详细分析。${historicalContext}
 
 请按以下JSON格式返回分析结果（不要包含任何其他内容，只返回JSON）：
 {
@@ -57,7 +72,7 @@ export async function analyzeReport(imageBase64, week, previousAnalysis = null) 
       "explanation": "通俗解释"
     }
   ],
-  "keyFindings": "关键发现",
+  "keyFindings": "关键发现（重点对比历史数据变化）",
   "concerns": ["需要关注的事项"],
   "recommendations": ["建议事项"],
   "dadTips": ["准爸爸可以做什么"],

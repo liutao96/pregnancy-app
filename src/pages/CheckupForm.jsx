@@ -246,10 +246,17 @@ export default function CheckupForm() {
           setSummarizing(true)
           setSummaryAttempted(true)
           try {
+            // Fetch previous checkups with AI summaries for historical comparison
+            const allPrevCheckups = await storage.getCheckups()
+            const prevWithSummary = allPrevCheckups
+              .filter(c => c.aiSummary && c.id !== checkup.id)
+              .sort((a, b) => new Date(b.date) - new Date(a.date)) // newest first
+              .slice(0, 5) // limit to last 5 for token savings
+
             // Analyze each image report sequentially
             const allAnalyses = []
             for (const report of imageReports) {
-              const analysis = await analyzeReport(report.imageData, checkup.week)
+              const analysis = await analyzeReport(report.imageData, checkup.week, prevWithSummary)
               allAnalyses.push({ ...analysis, reportId: report.id })
             }
 

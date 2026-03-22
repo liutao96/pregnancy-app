@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, Plus, AlertTriangle } from 'lucide-react'
+import { X, Plus, AlertTriangle, RefreshCw } from 'lucide-react'
 import Header from '../components/Header'
 import { storage } from '../utils/storage'
 import { getDaysUntilDue } from '../utils/pregnancyCalc'
@@ -10,6 +10,22 @@ export default function Settings() {
   const [saved, setSaved] = useState(false)
   const [newDislike, setNewDislike] = useState('')
   const [newTaboo, setNewTaboo] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      await storage.init()
+      setSyncMsg('同步成功')
+      setTimeout(() => setSyncMsg(''), 2000)
+    } catch (e) {
+      setSyncMsg('同步失败')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -237,6 +253,30 @@ export default function Settings() {
                 />
               </Field>
             </div>
+          )}
+        </div>
+
+        {/* Cloud sync */}
+        <div className="bg-white rounded-2xl p-4">
+          <p className="font-semibold text-slate-700 mb-3">云同步</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-600">从阿里云同步数据</p>
+              <p className="text-xs text-slate-400">合并云端与本地数据（以最新为准）</p>
+            </div>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-500 rounded-xl active:bg-rose-100 disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+              <span className="text-sm">{syncing ? '同步中...' : '同步'}</span>
+            </button>
+          </div>
+          {syncMsg && (
+            <p className={`text-xs mt-2 ${syncMsg.includes('成功') ? 'text-emerald-500' : 'text-red-500'}`}>
+              {syncMsg}
+            </p>
           )}
         </div>
 

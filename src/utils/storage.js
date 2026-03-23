@@ -1,4 +1,32 @@
 import localforage from 'localforage'
+import { parseISO } from 'date-fns'
+
+// Fix abnormal pregnancy weeks in checkups
+async function fixAbnormalWeeks(checkups, settings) {
+  if (!settings?.dueDate || !checkups?.length) return checkups
+
+  let fixed = false
+  const dueDate = parseISO(settings.dueDate)
+
+  const fixedCheckups = checkups.map(c => {
+    // Check if week is abnormal (outside 1-45 range)
+    if (c.week && (c.week < 1 || c.week > 45)) {
+      try {
+        const checkupDate = parseISO(c.date)
+        const daysUntilDue = Math.floor((dueDate.getTime() - checkupDate.getTime()) / (1000 * 60 * 60 * 24))
+        const correctWeek = Math.max(1, Math.min(45, 40 - Math.floor(daysUntilDue / 7)))
+        console.log(`Fixing week for ${c.date}: ${c.week} -> ${correctWeek}`)
+        fixed = true
+        return { ...c, week: correctWeek }
+      } catch (e) {
+        return c
+      }
+    }
+    return c
+  })
+
+  return fixedCheckups
+}
 
 localforage.config({
   name: 'pregnancy-companion',
@@ -121,6 +149,11 @@ export const storage = {
       // Settings: merge object keys, prefer local (user's device data)
       if (localData.settings) {
         merged.settings = { ...remoteData.settings, ...localData.settings }
+      }
+
+      // Fix abnormal weeks in checkups (e.g., 72 weeks is impossible)
+      if (merged.checkups?.length) {
+        merged.checkups = await fixAbnormalWeeks(merged.checkups, merged.settings)
       }
 
       // Save merged data back to local

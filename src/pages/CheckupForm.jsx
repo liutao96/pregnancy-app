@@ -108,16 +108,15 @@ export default function CheckupForm() {
     update('types', form.types.filter(t => t !== type))
   }
 
-  // When user manually changes the date, recalculate pregnancy week
-  // In edit mode, don't auto-change week (record already has its own week)
+  // When user changes the date, recalculate pregnancy week
   function handleDateChange(dateStr) {
     if (!dateStr) {
       update('date', dateStr)
       return
     }
     update('date', dateStr)
-    // Only auto-calculate week when form is initialized and not in edit mode
-    if (!initialized || isEdit) return
+    // Auto-calculate week when form is initialized
+    if (!initialized) return
     try {
       const selectedDate = parseISO(dateStr)
       const week = getCurrentWeek(settings.dueDate, selectedDate, settings)

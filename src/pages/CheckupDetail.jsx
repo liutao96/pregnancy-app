@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Edit2, Trash2, Sparkles, ChevronDown, ChevronUp, AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Edit2, Trash2, Sparkles, ChevronDown, ChevronUp, AlertCircle, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react'
 import Header from '../components/Header'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { storage } from '../utils/storage'
@@ -12,6 +12,7 @@ export default function CheckupDetail() {
   const [checkup, setCheckup] = useState(null)
   const [loading, setLoading] = useState(true)
   const [analyzingId, setAnalyzingId] = useState(null)
+  const [regenerating, setRegenerating] = useState(false)
   const [expandedReport, setExpandedReport] = useState(null)
   const [allCheckups, setAllCheckups] = useState([])
 
@@ -54,6 +55,73 @@ export default function CheckupDetail() {
       alert('解析失败：' + e.message)
     } finally {
       setAnalyzingId(null)
+    }
+  }
+
+  // Regenerate the combined AI summary for this checkup
+  async function regenerateSummary() {
+    if (!checkup.reports?.length) return
+    setRegenerating(true)
+    try {
+      // Get historical checkups for comparison
+      const historical = allCheckups
+        .filter(c => c.aiSummary && c.id !== checkup.id)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5)
+
+      // Analyze all image reports (non-PDF)
+      const imageReports = checkup.reports.filter(r => !r.isPdf)
+      const allAnalyses = []
+
+      for (const report of imageReports) {
+        try {
+          const analysis = await analyzeReport(report.imageData, checkup.week, historical)
+          allAnalyses.push({ ...analysis, reportId: report.id })
+        } catch (e) {
+          console.log('Report analysis failed:', e.message)
+        }
+      }
+
+      if (allAnalyses.length > 0) {
+        // Combine analyses
+        const combinedIndicators = []
+        const combinedRecommendations = []
+        const summaries = []
+
+        for (const a of allAnalyses) {
+          if (a.examName) summaries.push(`【${a.examName}】`)
+          if (a.summary) summaries.push(a.summary)
+          if (a.indicators?.length > 0) {
+            for (const ind of a.indicators) {
+              combinedIndicators.push({ ...ind, source: a.examName || '检查报告' })
+            }
+          }
+          if (a.recommendations?.length > 0) {
+            for (const rec of a.recommendations) {
+              combinedRecommendations.push(rec)
+            }
+          }
+        }
+
+        const aiSummary = {
+          examName: allAnalyses.length > 1
+            ? `综合分析（${allAnalyses.length}份报告）`
+            : allAnalyses[0]?.examName || '产检报告',
+          summary: summaries.filter(s => s).join('\n'),
+          indicators: combinedIndicators,
+          recommendations: combinedRecommendations,
+          reportAnalyses: allAnalyses,
+          generatedAt: Date.now(),
+        }
+
+        const updatedCheckup = { ...checkup, aiSummary }
+        await storage.saveCheckup(updatedCheckup)
+        setCheckup(updatedCheckup)
+      }
+    } catch (e) {
+      console.log('Regenerate summary failed:', e.message)
+    } finally {
+      setRegenerating(false)
     }
   }
 
@@ -104,14 +172,36 @@ export default function CheckupDetail() {
         </div>
 
         {/* AI Summary */}
-        {checkup.aiSummary && (
+        {(checkup.aiSummary || checkup.reports?.some(r => !r.isPdf)) && (
           <div className="bg-white rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={16} className="text-violet-500" />
-              <h3 className="font-semibold text-slate-800">报告总结</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-violet-500" />
+                <h3 className="font-semibold text-slate-800">报告总结</h3>
+              </div>
+              <button
+                onClick={regenerateSummary}
+                disabled={regenerating || !checkup.reports?.some(r => !r.isPdf)}
+                className="flex items-center gap-1 text-xs text-rose-500 active:text-rose-600 disabled:opacity-40"
+              >
+                <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
+                {regenerating ? '重新生成中...' : '重新生成'}
+              </button>
             </div>
             <div className="space-y-3">
-              {checkup.aiSummary.indicators?.length > 0 && (
+              {!checkup.aiSummary && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-slate-400 mb-2">暂无报告总结</p>
+                  <button
+                    onClick={regenerateSummary}
+                    disabled={regenerating || !checkup.reports?.some(r => !r.isPdf)}
+                    className="px-4 py-2 bg-rose-500 text-white rounded-xl text-sm font-medium active:bg-rose-600 disabled:opacity-50"
+                  >
+                    {regenerating ? '生成中...' : '生成报告总结'}
+                  </button>
+                </div>
+              )}
+              {checkup.aiSummary && checkup.aiSummary.indicators?.length > 0 && (
                 <div className="space-y-2">
                   {checkup.aiSummary.indicators.map((ind, i) => (
                     <div key={i} className="flex items-start gap-2">

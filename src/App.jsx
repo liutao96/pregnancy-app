@@ -14,6 +14,9 @@ import Preparation from './pages/Preparation'
 import Postpartum from './pages/Postpartum'
 import Settings from './pages/Settings'
 import BatchUpload from './pages/BatchUpload'
+import NamingCenter from './pages/NamingCenter'
+import FormalName from './pages/FormalName'
+import Nickname from './pages/Nickname'
 import { storage } from './utils/storage'
 
 export default function App() {
@@ -52,6 +55,9 @@ export default function App() {
           <Route path="/postpartum" element={<Postpartum />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/checkups/batch" element={<BatchUpload />} />
+          <Route path="/naming" element={<NamingCenter />} />
+          <Route path="/naming/formal" element={<FormalName />} />
+          <Route path="/naming/nickname" element={<Nickname />} />
         </Routes>
         <BottomNav />
       </div>

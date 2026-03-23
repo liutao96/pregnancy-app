@@ -15,6 +15,7 @@ const KEYS = {
   PRODUCTS_CACHE: 'products-cache',
   MEAL_HISTORY: 'meal-history',
   FOOD_EXCLUSIONS: 'food-exclusions',
+  NAMES: 'names',
 }
 
 // Default preparation checklist
@@ -67,6 +68,7 @@ async function syncAllToOSS() {
       postpartum: await localforage.getItem(KEYS.POSTPARTUM),
       mealHistory: await localforage.getItem(KEYS.MEAL_HISTORY) || [],
       foodExclusions: await localforage.getItem(KEYS.FOOD_EXCLUSIONS),
+      names: await localforage.getItem(KEYS.NAMES) || [],
       syncedAt: Date.now(),
     }
     await oss.saveDataToOSS(data)
@@ -93,6 +95,7 @@ export const storage = {
         postpartum: await localforage.getItem(KEYS.POSTPARTUM),
         mealHistory: await localforage.getItem(KEYS.MEAL_HISTORY) || [],
         foodExclusions: await localforage.getItem(KEYS.FOOD_EXCLUSIONS),
+        names: await localforage.getItem(KEYS.NAMES) || [],
       }
 
       // Merge: for each field, use the one with most recent data
@@ -128,6 +131,7 @@ export const storage = {
       if (merged.postpartum) await localforage.setItem(KEYS.POSTPARTUM, merged.postpartum)
       if (merged.mealHistory) await localforage.setItem(KEYS.MEAL_HISTORY, merged.mealHistory)
       if (merged.foodExclusions) await localforage.setItem(KEYS.FOOD_EXCLUSIONS, merged.foodExclusions)
+      if (merged.names) await localforage.setItem(KEYS.NAMES, merged.names)
 
       // Sync merged data back to OSS
       await syncAllToOSS()
@@ -276,5 +280,26 @@ export const storage = {
     const result = await localforage.setItem(KEYS.FOOD_EXCLUSIONS, data)
     syncAllToOSS()
     return result
+  },
+
+  // Names collection
+  async getNames() {
+    return (await localforage.getItem(KEYS.NAMES)) || []
+  },
+  async saveName(nameData) {
+    const names = await this.getNames()
+    names.unshift({
+      ...nameData,
+      id: nameData.id || Date.now().toString(),
+      createdAt: Date.now(),
+    })
+    await localforage.setItem(KEYS.NAMES, names)
+    syncAllToOSS()
+    return nameData
+  },
+  async deleteName(id) {
+    const names = await this.getNames()
+    await localforage.setItem(KEYS.NAMES, names.filter(n => n.id !== id))
+    syncAllToOSS()
   },
 }

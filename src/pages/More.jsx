@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ShoppingBag, ClipboardCheck, Baby, Settings, ChevronRight, Utensils } from 'lucide-react'
+import { ShoppingBag, ClipboardCheck, Baby, Settings, ChevronRight, Utensils, Feather } from 'lucide-react'
 import Header from '../components/Header'
 
 const MENU_ITEMS = [
@@ -10,6 +10,7 @@ const MENU_ITEMS = [
       { icon: ShoppingBag, label: '好物推荐', desc: '按孕周精选推荐商品', to: '/products', color: 'bg-amber-50 text-amber-500' },
       { icon: ClipboardCheck, label: '待产准备', desc: '待产包清单 · 进度追踪', to: '/preparation', color: 'bg-emerald-50 text-emerald-500' },
       { icon: Baby, label: '产后护理', desc: '喂奶记录 · 护理指南', to: '/postpartum', color: 'bg-sky-50 text-sky-500' },
+      { icon: Feather, label: '宝宝起名', desc: '大名 · 小名', to: '/naming', color: 'bg-amber-50 text-amber-500' },
     ]
   },
   {

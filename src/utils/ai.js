@@ -388,3 +388,98 @@ export async function askQuestionStream(userMessage, history, context, onChunk) 
 
   return fullContent
 }
+
+// Generate formal baby name (大名)
+export async function generateFormalName(params) {
+  const { fatherSurname, motherSurname, gender, birthYear = 2026, style = '平安喜乐·阳光从容' } = params
+
+  const genderText = gender === 'male' ? '男宝宝' : gender === 'female' ? '女宝宝' : '宝宝'
+  const forbiddenChars = '梓、轩、涵、萱、子、睿、怡、浩、宇、晨、欣、琪、琳、敏、雅'
+
+  const messages = [
+    {
+      role: 'system',
+      content: `你是【灵犀·平安喜乐】顶级姓名美学顾问。你专为2026年出生的宝宝构思名字，追求"暖阳与流水"的结合——名字需传达出性格开朗、生活惬意、内心宁静的画面感。
+
+核心原则：
+- 独特性最高：严禁使用近十年重名率极高的网红字（${forbiddenChars}）
+- 素材库涵盖《经史子集》中的冷门雅称，以及具有现代电影感、艺术感的自然意象
+- 听觉美学：结合姓氏声调，优化平仄组合，追求朗朗上口
+- 2026火马年（丙午年），可适度包含"草、木、禾、水"等意象以平衡火气
+- 审美基调：追求"暖阳与流水"的结合`
+    },
+    {
+      role: 'user',
+      content: `请为刘家${birthYear}年出生的${genderText}构思5组极具设计感的大名。
+
+家族信息：父姓${fatherSurname}（属牛），母姓${motherSurname}（属牛）。
+风格追求：${style}
+
+请按以下严格JSON格式返回（只返回JSON，不要有任何其他内容）：
+{
+  "names": [
+    {
+      "name": "名字（2-3字）",
+      "pinyin": "拼音（姓+名）",
+      "meaning": "意蕴溯源：解释字义来源（古籍出处或现代意象重构）",
+      "visual": "画面审美：描述该名字给人的视觉联想",
+      "peaceJoy": "平安喜乐解析：说明该名字如何体现'一生顺遂、性格阳光'的祝愿",
+      "phonetics": "声韵分析：分析与'${fatherSurname}'姓搭配后的读音美感",
+      "uniqueness": 8,
+      "elements": ["包含的五行元素（如有）"]
+    }
+  ]
+}`
+    }
+  ]
+
+  const content = await chat(messages, { maxTokens: 4000 })
+  const jsonMatch = content.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('无法解析AI返回的名字结果')
+  return JSON.parse(jsonMatch[0])
+}
+
+// Generate nickname (小名)
+export async function generateNickname(params) {
+  const { gender, formalName = '', style = '亲切可爱' } = params
+
+  const genderText = gender === 'male' ? '男宝宝' : gender === 'female' ? '女宝宝' : '宝宝'
+
+  const messages = [
+    {
+      role: 'system',
+      content: `你是【灵犀·平安喜乐】顶级姓名美学顾问，专为宝宝构思温馨可爱的小名。
+
+核心原则：
+- 小名要亲切、可爱、琅琅上口
+- 避免过于正式或严肃的字眼
+- 可以来源于自然景物、可爱动物、食物、叠音等
+- 2026火马年，可适度包含温暖意象`
+    },
+    {
+      role: 'user',
+      content: `请为${genderText}构思5组温馨可爱的小名。
+
+风格：${style}
+大名参考：${formalName || '暂无'}
+
+请按以下严格JSON格式返回（只返回JSON，不要有任何其他内容）：
+{
+  "nicknames": [
+    {
+      "name": "小名",
+      "source": "来源：解释小名的含义或灵感来源",
+      "visual": "画面感：给人什么可爱画面或感觉",
+      "feeling": "整体感觉：亲切/俏皮/温暖等",
+      "ease": "琅琅上口度1-10评分"
+    }
+  ]
+}`
+    }
+  ]
+
+  const content = await chat(messages, { maxTokens: 3000 })
+  const jsonMatch = content.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) throw new Error('无法解析AI返回的小名结果')
+  return JSON.parse(jsonMatch[0])
+}

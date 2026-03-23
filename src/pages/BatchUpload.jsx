@@ -112,7 +112,9 @@ export default function BatchUpload() {
     setSaving(true)
 
     const settings = await storage.getSettings()
+    const existingCheckups = await storage.getCheckups()
     let savedCount = 0
+    let newCount = 0
 
     for (const [date, items] of Object.entries(grouped)) {
       // Get week from first item with valid week
@@ -131,9 +133,8 @@ export default function BatchUpload() {
         week = 40 - Math.floor(daysDiff / 7)
       }
 
-      // Build checkup record
-      const checkupId = uuidv4()
-      const reports = await Promise.all(items.map(async (item) => {
+      // Build new reports
+      const newReports = await Promise.all(items.map(async (item) => {
         const reportId = uuidv4()
         const base64 = await fileToBase64(item.file)
         return {
@@ -145,21 +146,35 @@ export default function BatchUpload() {
         }
       }))
 
-      const checkup = {
-        id: checkupId,
-        date,
-        week,
-        hospital: items[0]?.info?.hospital || '霍山县医院',
-        types: [items[0]?.info?.type || '常规产检'],
-        notes: '',
-        reports,
-        createdAt: Date.now(),
-      }
+      // Check if checkup with same date already exists
+      const existingCheckup = existingCheckups.find(c => c.date === date)
 
-      // Save checkup
-      await storage.saveCheckup(checkup)
-      savedCount++
-      setSaved(savedCount)
+      if (existingCheckup) {
+        // Merge into existing checkup - append new reports
+        const updatedCheckup = {
+          ...existingCheckup,
+          reports: [...(existingCheckup.reports || []), ...newReports],
+        }
+        await storage.saveCheckup(updatedCheckup)
+        savedCount++
+        setSaved(savedCount + newCount)
+      } else {
+        // Create new checkup
+        const checkupId = uuidv4()
+        const checkup = {
+          id: checkupId,
+          date,
+          week,
+          hospital: items[0]?.info?.hospital || '霍山县医院',
+          types: [items[0]?.info?.type || '常规产检'],
+          notes: '',
+          reports: newReports,
+          createdAt: Date.now(),
+        }
+        await storage.saveCheckup(checkup)
+        newCount++
+        setSaved(savedCount + newCount)
+      }
     }
 
     setSaving(false)
@@ -309,7 +324,7 @@ export default function BatchUpload() {
               className="w-full mt-4 py-3 bg-rose-500 text-white rounded-xl font-medium active:bg-rose-600 flex items-center justify-center gap-2"
             >
               <CheckCircle size={18} />
-              确认创建 {Object.keys(grouped).length} 条记录
+              确认保存（相同日期会自动合并）
             </button>
           </div>
         )}
@@ -321,7 +336,7 @@ export default function BatchUpload() {
               <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
               <div>
                 <p className="text-sm font-medium text-slate-700">正在保存...</p>
-                <p className="text-xs text-slate-400">已创建 {saved} 条记录，同步到云端</p>
+                <p className="text-xs text-slate-400">保存中，同步到云端...</p>
               </div>
             </div>
           </div>

@@ -138,8 +138,11 @@ export default function BatchUpload() {
         if (item.info?.week && !week) week = item.info.week
       }
 
-      // 如果没有识别出孕周，根据报告日期和预产期计算
-      if (!week && settings.dueDate) {
+      // 验证孕周是否合理（1-45周），如果不合理则根据预产期重新计算
+      const isWeekValid = week && week >= 1 && week <= 45
+
+      // 如果没有识别出孕周或孕周不合理，根据报告日期和预产期计算
+      if (!isWeekValid && settings.dueDate) {
         try {
           const dueDate = parseISO(settings.dueDate)
           const checkupDate = new Date(date)

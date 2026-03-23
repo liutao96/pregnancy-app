@@ -439,6 +439,61 @@ export async function generateFormalName(params) {
   return JSON.parse(jsonMatch[0])
 }
 
+// Q&A about a specific checkup report
+export async function askAboutReports(checkup, question) {
+  const checkupContext = `
+【产检记录信息】
+- 检查日期：${checkup.date}
+- 孕周：${checkup.week}周
+- 检查类型：${checkup.type || '常规产检'}
+${checkup.hospital ? `- 医院：${checkup.hospital}` : ''}
+
+【AI分析总结】
+${checkup.aiSummary?.summary || '无总结'}
+
+【关键指标】
+${checkup.aiSummary?.indicators?.length > 0
+  ? checkup.aiSummary.indicators.map(i => `- ${i.name}: ${i.value} (参考范围: ${i.reference || '无'}, 状态: ${i.status})`).join('\n')
+  : '无具体指标数据'
+}
+
+【关键发现】
+${checkup.aiSummary?.keyFindings || '无'}
+
+【需要关注的事项】
+${checkup.aiSummary?.concerns?.length > 0
+  ? checkup.aiSummary.concerns.join('\n')
+  : '无特别关注事项'
+}
+
+【建议事项】
+${checkup.aiSummary?.recommendations?.length > 0
+  ? checkup.aiSummary.recommendations.join('\n')
+  : '无特别建议'
+}
+`
+
+  const messages = [
+    {
+      role: 'system',
+      content: `${SYSTEM_PROMPT}
+
+你是一位专业的孕期健康顾问。请根据提供的产检报告信息，回答用户关于该报告的问题。
+如果用户问的是与报告无关的孕期问题，请礼貌地引导用户回到报告相关的话题。
+回答要温暖、专业、易懂。`
+    },
+    {
+      role: 'user',
+      content: `${checkupContext}
+
+请回答以下关于这份产检报告的问题：
+${question}`
+    }
+  ]
+
+  return chat(messages, { maxTokens: 1500 })
+}
+
 // Generate nickname (小名)
 export async function generateNickname(params) {
   const { gender, formalName = '', style = '亲切可爱' } = params

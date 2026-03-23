@@ -138,10 +138,23 @@ export default function BatchUpload() {
         if (item.info?.week && !week) week = item.info.week
       }
 
+      // 如果没有识别出孕周，根据报告日期和预产期计算
+      if (!week && settings.dueDate) {
+        try {
+          const dueDate = parseISO(settings.dueDate)
+          const checkupDate = new Date(date)
+          // 计算预产期还有多少天
+          const daysUntilDue = Math.floor((dueDate.getTime() - checkupDate.getTime()) / (1000 * 60 * 60 * 24))
+          // 孕周 = 40 - 距离预产期的周数
+          week = Math.max(1, Math.min(45, 40 - Math.floor(daysUntilDue / 7)))
+        } catch (e) {
+          console.log('Week calculation failed:', e)
+        }
+      }
+
+      // 如果仍然没有孕周，使用默认值1（用户需要手动修改）
       if (!week) {
-        const due = parseISO(settings.dueDate)
-        const daysDiff = Math.floor((new Date(date) - due) / (1000 * 60 * 60 * 24))
-        week = 40 - Math.floor(daysDiff / 7)
+        week = 1
       }
 
       const newReports = await Promise.all(items.map(async (item) => {
@@ -449,7 +462,11 @@ export default function BatchUpload() {
                   </div>
                   <div className="mt-2 pt-2 border-t border-slate-50 text-xs text-slate-400">
                     {items[0]?.info?.hospital || '霍山县医院'}
-                    {items[0]?.info?.week && ` · 孕${items[0].info.week}周`}
+                    {items[0]?.info?.week ? (
+                      <span className="text-rose-400"> · 孕{items[0].info.week}周</span>
+                    ) : (
+                      <span className="text-amber-500"> · 孕周待确认</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -493,23 +510,26 @@ export default function BatchUpload() {
               </div>
             </div>
 
-            {results.map(({ checkup, success, error }) => (
+            {results.map(({ checkup, success, error }) => {
+              const hasAiSummary = checkup.aiSummary && checkup.aiSummary.summary
+              return (
               <div key={checkup.id} className="bg-white rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="font-semibold text-slate-700">{checkup.date}</p>
                     <p className="text-xs text-slate-400">
                       {checkup.reports?.length || 0}份报告 · 孕{checkup.week}周
+                      {!hasAiSummary && <span className="text-amber-500 ml-1">· 待生成报告解析</span>}
                     </p>
                   </div>
-                  {success ? (
+                  {hasAiSummary ? (
                     <CheckCircle size={20} className="text-emerald-500" />
                   ) : (
-                    <AlertCircle size={20} className="text-red-500" />
+                    <AlertCircle size={20} className="text-amber-500" />
                   )}
                 </div>
 
-                {success && checkup.aiSummary && (
+                {hasAiSummary && (
                   <div className="space-y-2 mb-3">
                     {checkup.aiSummary.summary && (
                       <div className="p-3 bg-violet-50 rounded-xl">
@@ -585,7 +605,8 @@ export default function BatchUpload() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
 

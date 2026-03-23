@@ -65,6 +65,19 @@ export default function BatchUpload() {
 
       try {
         setFiles(prev => prev.map(f => f.id === item.id ? { ...f, status: 'analyzing' } : f))
+
+        // PDF文件不支持AI图像识别，跳过信息提取
+        if (isPdf(item.file)) {
+          const fallbackDate = new Date().toISOString().split('T')[0]
+          results.push({
+            ...item,
+            status: 'done',
+            info: { date: fallbackDate, type: '常规产检', week: null, hospital: '', confidence: 'low' },
+          })
+          setFiles(prev => prev.map(f => f.id === item.id ? { ...f, status: 'done', info: { date: fallbackDate, type: '常规产检', week: null, hospital: '', confidence: 'low' } } : f))
+          continue
+        }
+
         const base64 = await fileToBase64(item.file)
         const info = await extractCheckupInfo(base64)
 

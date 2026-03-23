@@ -271,9 +271,23 @@ export const storage = {
 
   // Food exclusions
   async getFoodExclusions() {
-    return (await localforage.getItem(KEYS.FOOD_EXCLUSIONS)) || {
+    const stored = await localforage.getItem(KEYS.FOOD_EXCLUSIONS)
+    if (stored) return stored
+    // Default pregnancy taboos (only return defaults if nothing stored yet)
+    return {
       dislikes: [],
-      taboo: [],
+      taboo: [
+        '生肉、生鱼片（如刺身、醉虾蟹）',
+        '生蛋、半熟蛋（如温泉蛋、溏心蛋）',
+        '未经巴氏消毒的奶制品（生牛奶、软奶酪）',
+        '高汞鱼（鲨鱼、剑鱼、金枪鱼、马林鱼）',
+        '酒精（红酒、白酒、啤酒、米酒等）',
+        '咖啡因（每日限量200mg，约1杯咖啡）',
+        '冷盘熟食/即食肉类（切片火腿等）',
+        '腌制/熏制肉类（腊肉、香肠、培根）',
+        '生蚝、生的贝类',
+        '外卖沙拉（无法确认食材来源）',
+      ],
     }
   },
   async saveFoodExclusions(data) {
